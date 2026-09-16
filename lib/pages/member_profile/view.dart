@@ -16,7 +16,6 @@ import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/app_sign.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/extension/file_ext.dart';
-import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
@@ -27,7 +26,6 @@ import 'package:easy_debounce/easy_throttle.dart';
 import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mime/mime.dart';
@@ -478,7 +476,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         requestFullMetadata: false,
       );
       if (pickedFile != null && mounted) {
-        String? imagePath = pickedFile.path;
+        final String imagePath = pickedFile.path;
         String? mimeType = (pickedFile.mimeType ?? lookupMimeType(imagePath))
             ?.split('/')
             .elementAtOrNull(1);
@@ -486,35 +484,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           SmartDialog.showToast('不能选GIF');
           return;
         }
-        if (PlatformUtils.isMobile) {
-          final croppedFile = await ImageCropper.platform.cropImage(
-            sourcePath: imagePath,
-            uiSettings: [
-              AndroidUiSettings(
-                toolbarTitle: '裁剪',
-                toolbarColor: theme.colorScheme.secondaryContainer,
-                toolbarWidgetColor: theme.colorScheme.onSecondaryContainer,
-                statusBarLight: theme.isLight,
-                aspectRatioPresets: const [CropAspectRatioPresetCustom()],
-                lockAspectRatio: true,
-                hideBottomControls: true,
-                cropStyle: CropStyle.circle,
-                initAspectRatio: const CropAspectRatioPresetCustom(),
-              ),
-              IOSUiSettings(
-                title: '裁剪',
-                aspectRatioPresets: const [CropAspectRatioPresetCustom()],
-                cropStyle: CropStyle.circle,
-                aspectRatioLockEnabled: true,
-                resetAspectRatioEnabled: false,
-                aspectRatioPickerButtonHidden: true,
-              ),
-            ],
-          );
-          File(imagePath).tryDel();
-          imagePath = croppedFile?.path;
-        }
-        if (imagePath != null) {
+        if (imagePath.isNotEmpty) {
           Request()
               .post(
                 '/x/member/web/face/update',
@@ -538,7 +508,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 } else {
                   SmartDialog.showToast(res.data['message']);
                 }
-                if (PlatformUtils.isMobile && imagePath != null) {
+                if (PlatformUtils.isMobile) {
                   File(imagePath).tryDel();
                 }
               });
@@ -548,14 +518,4 @@ class _EditProfilePageState extends State<EditProfilePage> {
       SmartDialog.showToast(e.toString());
     }
   }
-}
-
-class CropAspectRatioPresetCustom implements CropAspectRatioPresetData {
-  const CropAspectRatioPresetCustom();
-
-  @override
-  (int, int) get data => const (1, 1);
-
-  @override
-  String get name => '1x1 (customized)';
 }

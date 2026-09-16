@@ -116,12 +116,10 @@ dependencies:
   hive_ce: ^2.19.3
   html: ^0.15.4
   http2: ^2.3.1
-  image_cropper: ^12.0.0
   image_picker: ^1.1.2
   intl: ^0.20.2
   jni: ^1.0.0
   json_annotation: ^4.11.0
-  live_photo_maker: ^0.0.6
   logger: ^2.5.0
   material_color_utilities: ^0.13.0
   material_design_icons_flutter:
@@ -142,7 +140,6 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler_android: ^14.0.0
-  permission_handler_apple: ^9.4.7
   permission_handler_platform_interface: ^4.3.0
   pretty_qr_code: ^3.3.0
   protobuf: ^6.0.0
