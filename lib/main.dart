@@ -93,6 +93,11 @@ Future<void> _initAppPath() async {
 void main() async {
   ScaledWidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  if (PlatformUtils.isTV) {
+    PaintingBinding.instance.imageCache
+      ..maximumSize = 300
+      ..maximumSizeBytes = 64 << 20;
+  }
   await _initAppPath();
   try {
     await GStorage.init();

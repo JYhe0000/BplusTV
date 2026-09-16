@@ -618,7 +618,8 @@ abstract final class Pref {
       _setting.get(SettingBoxKey.showPgcTimeline, defaultValue: true);
 
   static num get maxCacheSize =>
-      _setting.get(SettingBoxKey.maxCacheSize) ?? 1 << 30;
+      _setting.get(SettingBoxKey.maxCacheSize) ??
+      (DeviceUtils.isTV ? 256 << 20 : 1 << 30);
 
   static bool get optTabletNav =>
       _setting.get(SettingBoxKey.optTabletNav, defaultValue: true);
