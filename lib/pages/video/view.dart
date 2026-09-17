@@ -116,6 +116,28 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   /// Whether the TV bottom info panel is open.
   bool _tvPanel = false;
 
+  final FocusNode _tvPanelTabFocus = FocusNode(debugLabel: 'TvPanelTabs');
+
+  KeyEventResult _onTvPanelTabKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final ctr = videoDetailController.tabCtr;
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.arrowLeft:
+        if (ctr.index > 0) ctr.animateTo(ctr.index - 1);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowRight:
+        if (ctr.index < ctr.length - 1) ctr.animateTo(ctr.index + 1);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowDown:
+        node.nextFocus();
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowUp:
+        setState(() => _tvPanel = false);
+        return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   bool get isFullScreen =>
       videoDetailController.plPlayerController.isFullScreen.value;
 
@@ -377,6 +399,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     if (PlatformUtils.isTV) {
       HardwareKeyboard.instance.removeHandler(_onTvKey);
     }
+    _tvPanelTabFocus.dispose();
 
     super.dispose();
   }
@@ -759,15 +782,18 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(baseScale * 1.25),
         ),
-        child: Focus(
-          autofocus: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 32, right: 32, top: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 32, right: 32, top: 16),
+              child: Focus(
+                focusNode: _tvPanelTabFocus,
+                autofocus: true,
+                onKeyEvent: _onTvPanelTabKey,
                 child: buildTabBar(),
               ),
+            ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -804,8 +830,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget buildTabBar({
