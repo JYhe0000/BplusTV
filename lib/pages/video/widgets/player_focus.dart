@@ -92,10 +92,20 @@ class PlayerFocus extends StatefulWidget {
             if (canPlay != null && !canPlay!()) {
               return true;
             }
-            plPlayerController.controls =
-                !plPlayerController.showControls.value;
+            // TV: OK toggles play/pause.
+            if (hasPlayer) {
+              plPlayerController.onDoubleTapCenter();
+            }
           }
           return true;
+        case LogicalKeyboardKey.arrowUp:
+          // TV: up reveals the control bar when it is hidden.
+          if (event is KeyDownEvent &&
+              !plPlayerController.showControls.value) {
+            plPlayerController.controls = true;
+            return true;
+          }
+          return false;
         case LogicalKeyboardKey.mediaFastForward:
           if (event is KeyDownEvent &&
               hasPlayer &&
