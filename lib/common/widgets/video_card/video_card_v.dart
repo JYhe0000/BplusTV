@@ -23,11 +23,13 @@ import 'package:material_ui/material_ui.dart';
 class VideoCardV extends StatelessWidget {
   final BaseRcmdVideoItemModel videoItem;
   final VoidCallback? onRemove;
+  final bool autofocus;
 
   const VideoCardV({
     super.key,
     required this.videoItem,
     this.onRemove,
+    this.autofocus = false,
   });
 
   Future<void> onPushDetail() async {
@@ -92,6 +94,7 @@ class VideoCardV extends StatelessWidget {
         TvCard(
           onTap: onPushDetail,
           onLongPress: onLongPress,
+          autofocus: autofocus,
           radius: 12,
           child: Card(
             child: Column(

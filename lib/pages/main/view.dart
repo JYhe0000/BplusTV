@@ -48,6 +48,7 @@ class _MainAppState extends PopScopeState<MainApp>
   late EdgeInsets _padding;
   late ColorScheme _colorScheme;
   Brightness? _brightness;
+  bool _tvFocusInitialized = false;
 
   @override
   bool get initCanPop => false;
@@ -89,6 +90,21 @@ class _MainAppState extends PopScopeState<MainApp>
     }
     if (!_mainController.useSideBar) {
       _mainController.useBottomNav = MediaQuery.sizeOf(context).isPortrait;
+    }
+    if (PlatformUtils.isTV && !_tvFocusInitialized) {
+      _tvFocusInitialized = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _ensureTvFocus());
+    }
+  }
+
+  int _tvFocusTries = 0;
+
+  void _ensureTvFocus() {
+    if (!mounted || _tvFocusTries > 20) return;
+    final ok = FocusScope.of(context).nextFocus();
+    if (!ok) {
+      _tvFocusTries++;
+      Future.delayed(const Duration(milliseconds: 500), _ensureTvFocus);
     }
   }
 

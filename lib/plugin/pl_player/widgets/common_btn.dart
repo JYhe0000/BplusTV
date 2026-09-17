@@ -1,3 +1,4 @@
+import 'package:PiliPlus/tv/tv_focus.dart';
 import 'package:material_ui/material_ui.dart';
 
 class ComBtn extends StatelessWidget {
@@ -8,6 +9,7 @@ class ComBtn extends StatelessWidget {
   final double width;
   final double height;
   final String? tooltip;
+  final bool autofocus;
 
   const ComBtn({
     super.key,
@@ -18,6 +20,7 @@ class ComBtn extends StatelessWidget {
     this.width = 34,
     this.height = 34,
     this.tooltip,
+    this.autofocus = false,
   });
 
   @override
@@ -25,12 +28,15 @@ class ComBtn extends StatelessWidget {
     final child = SizedBox(
       width: width,
       height: height,
-      child: GestureDetector(
+      child: TvFocusable(
         onTap: onTap,
         onLongPress: onLongPress,
-        onSecondaryTap: onSecondaryTap,
-        behavior: HitTestBehavior.opaque,
-        child: icon,
+        autofocus: autofocus,
+        builder: (context, focused, hovered) => TvFocusHighlight(
+          radius: 8,
+          focused: focused,
+          child: Center(child: icon),
+        ),
       ),
     );
     if (tooltip != null) {

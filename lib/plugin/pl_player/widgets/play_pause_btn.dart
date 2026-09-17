@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
+import 'package:PiliPlus/tv/tv_focus.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -52,16 +53,19 @@ class PlayOrPauseButtonState extends State<PlayOrPauseButton>
     return SizedBox(
       width: 42,
       height: 34,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      child: TvFocusable(
         onTap: widget.plPlayerController.onDoubleTapCenter,
-        child: Center(
-          child: AnimatedIcon(
-            semanticLabel: player.state.playing ? '暂停' : '播放',
-            progress: controller,
-            icon: AnimatedIcons.play_pause,
-            color: Colors.white,
-            size: 20,
+        builder: (context, focused, hovered) => TvFocusHighlight(
+          radius: 8,
+          focused: focused,
+          child: Center(
+            child: AnimatedIcon(
+              semanticLabel: player.state.playing ? '暂停' : '播放',
+              progress: controller,
+              icon: AnimatedIcons.play_pause,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
         ),
       ),

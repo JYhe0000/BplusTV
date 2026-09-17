@@ -99,6 +99,7 @@ class _RcmdPageState extends State<RcmdPage>
                         : index;
                     return VideoCardV(
                       videoItem: response[actualIndex],
+                      autofocus: actualIndex == 0,
                       onRemove: () {
                         if (controller.lastRefreshAt != null &&
                             actualIndex < controller.lastRefreshAt!) {
@@ -113,6 +114,7 @@ class _RcmdPageState extends State<RcmdPage>
                   } else {
                     return VideoCardV(
                       videoItem: response[index],
+                      autofocus: index == 0,
                       onRemove: () => controller.loadingState
                         ..value.data!.removeAt(index)
                         ..refresh(),

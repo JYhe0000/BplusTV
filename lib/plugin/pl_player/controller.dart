@@ -1134,6 +1134,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   /// 隐藏控制条
   void hideTaskControls() {
     _timer?.cancel();
+    // On TV keep the controls on screen until the user dismisses them,
+    // otherwise they vanish while navigating with the remote.
+    if (PlatformUtils.isTV) {
+      return;
+    }
     _timer = Timer(showControlDuration, () {
       if (!isSeeking.value && !tripling) {
         controls = false;

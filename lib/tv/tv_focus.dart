@@ -49,7 +49,7 @@ class _TvFocusableState extends State<TvFocusable> {
       autofocus: widget.autofocus,
       enabled: widget.canRequestFocus,
       mouseCursor: widget.mouseCursor,
-      onShowFocusHighlight: (value) {
+      onFocusChange: (value) {
         if (_focused != value) {
           setState(() => _focused = value);
           widget.onFocusChange?.call(value);
@@ -107,7 +107,7 @@ class TvFocusHighlight extends StatelessWidget {
     return AnimatedContainer(
       duration: TvConstants.focusDuration,
       curve: Curves.easeOut,
-      decoration: BoxDecoration(
+      foregroundDecoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius ?? TvConstants.focusRadius),
         border: Border.all(
           color: focused ? focusColor : Colors.transparent,

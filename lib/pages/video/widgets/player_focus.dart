@@ -13,7 +13,7 @@ import 'package:flutter/services.dart'
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:material_ui/material_ui.dart';
 
-class PlayerFocus extends StatelessWidget {
+class PlayerFocus extends StatefulWidget {
   const PlayerFocus({
     super.key,
     required this.child,
@@ -33,27 +33,15 @@ class PlayerFocus extends StatelessWidget {
   final ValueGetter<bool>? onSkipSegment;
   final VoidCallback? onRefresh;
 
+  @override
+  State<PlayerFocus> createState() => _PlayerFocusState();
+
   static bool _shouldHandle(LogicalKeyboardKey logicalKey) {
     return logicalKey == LogicalKeyboardKey.tab ||
         logicalKey == LogicalKeyboardKey.arrowLeft ||
         logicalKey == LogicalKeyboardKey.arrowRight ||
         logicalKey == LogicalKeyboardKey.arrowUp ||
         logicalKey == LogicalKeyboardKey.arrowDown;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Focus(
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        final handled = _handleKey(context, event);
-        if (handled || _shouldHandle(event.logicalKey)) {
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: child,
-    );
   }
 
   bool get isFullScreen => plPlayerController.isFullScreen.value;
@@ -91,9 +79,15 @@ class PlayerFocus extends StatelessWidget {
     if (PlatformUtils.isTV) {
       switch (key) {
         case LogicalKeyboardKey.mediaPlayPause:
-        case LogicalKeyboardKey.select:
           if (event is KeyDownEvent && hasPlayer) {
             plPlayerController.onDoubleTapCenter();
+          }
+          return true;
+        case LogicalKeyboardKey.select:
+        case LogicalKeyboardKey.enter:
+          if (event is KeyDownEvent) {
+            plPlayerController.controls =
+                !plPlayerController.showControls.value;
           }
           return true;
         case LogicalKeyboardKey.mediaFastForward:
@@ -332,5 +326,51 @@ class PlayerFocus extends StatelessWidget {
     }
 
     return false;
+  }
+}
+
+class _PlayerFocusState extends State<PlayerFocus> {
+  final FocusNode _focusNode = FocusNode(debugLabel: 'PlayerFocus');
+  StreamSubscription<bool>? _controlsSub;
+
+  @override
+  void initState() {
+    super.initState();
+    if (PlatformUtils.isTV) {
+      _controlsSub = widget.plPlayerController.showControls.listen((visible) {
+        if (!visible && mounted && !_focusNode.hasFocus) {
+          _focusNode.requestFocus();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controlsSub?.cancel();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (PlatformUtils.isTV &&
+            widget.plPlayerController.showControls.value &&
+            PlayerFocus._shouldHandle(event.logicalKey)) {
+          // Controls are visible: let the D-pad move focus through them.
+          return KeyEventResult.ignored;
+        }
+        final handled = widget._handleKey(context, event);
+        if (handled || PlayerFocus._shouldHandle(event.logicalKey)) {
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: widget.child,
+    );
   }
 }
