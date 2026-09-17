@@ -74,7 +74,6 @@ class _TvBottomControlState extends State<TvBottomControl> {
       if (!mounted) return;
       if (visible) {
         _index = 0;
-        _focusNode.requestFocus();
       } else if (_focusNode.hasFocus) {
         _focusNode.unfocus();
       }
@@ -118,10 +117,21 @@ class _TvBottomControlState extends State<TvBottomControl> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Focus(
-      focusNode: _focusNode,
-      onKeyEvent: _onKey,
-      child: Container(
+    return Obx(() {
+      final visible = widget.controller.showControls.value;
+      if (visible && !_focusNode.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && widget.controller.showControls.value) {
+            _focusNode.requestFocus();
+          }
+        });
+      }
+      return Focus(
+        focusNode: _focusNode,
+        canRequestFocus: visible,
+        skipTraversal: !visible,
+        onKeyEvent: _onKey,
+        child: Container(
         padding: const EdgeInsets.fromLTRB(48, 24, 48, 28),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -187,7 +197,8 @@ class _TvBottomControlState extends State<TvBottomControl> {
           ],
         ),
       ),
-    );
+      );
+    });
   }
 }
 
