@@ -56,6 +56,7 @@ import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/services/shutdown_timer_service.dart'
     show shutdownTimerService;
 import 'package:PiliPlus/tv/player/tv_bottom_control.dart';
+import 'package:PiliPlus/tv/player/tv_header_control.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/android/bindings.g.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
@@ -1242,13 +1243,18 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
               plPlayerController: plPlayerController!,
               videoDetailController: videoDetailController,
               introController: introController,
-              headerControl: HeaderControl(
-                key: videoDetailController.headerCtrKey,
-                isPortrait: isPortrait,
-                controller: videoDetailController.plPlayerController,
-                videoDetailCtr: videoDetailController,
-                heroTag: heroTag,
-              ),
+              headerControl: PlatformUtils.isTV
+                  ? TvHeaderControl(
+                      title: Get.arguments['title']?.toString() ?? '',
+                      onBack: () => Navigator.of(context).maybePop(),
+                    )
+                  : HeaderControl(
+                      key: videoDetailController.headerCtrKey,
+                      isPortrait: isPortrait,
+                      controller: videoDetailController.plPlayerController,
+                      videoDetailCtr: videoDetailController,
+                      heroTag: heroTag,
+                    ),
               bottomControl: PlatformUtils.isTV
                   ? TvBottomControl(
                       controller: plPlayerController!,
