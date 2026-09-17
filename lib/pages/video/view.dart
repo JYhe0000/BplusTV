@@ -51,6 +51,7 @@ import 'package:PiliPlus/services/shutdown_timer_service.dart'
     show shutdownTimerService;
 import 'package:PiliPlus/tv/player/tv_bottom_control.dart';
 import 'package:PiliPlus/tv/player/tv_header_control.dart';
+import 'package:PiliPlus/tv/tv_focus.dart';
 import 'package:PiliPlus/tv/video/tv_video_info.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/android/bindings.g.dart';
@@ -759,6 +760,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
           Positioned.fill(
             child: videoPlayer(width: maxWidth, height: maxHeight),
           ),
+          if (!videoDetailController.autoPlay)
+            Positioned.fill(child: _tvPoster()),
           if (_tvPanel)
             Positioned(
               left: 0,
@@ -767,6 +770,65 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
               height: maxHeight * 0.62,
               child: _tvInfoPanel(),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tvPoster() {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x55000000), Color(0xCC000000)],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: TvFocusable(
+              autofocus: true,
+              onTap: handlePlay,
+              builder: (context, focused, hovered) => AnimatedScale(
+                scale: focused ? 1.12 : 1.0,
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+                child: Container(
+                  width: 128,
+                  height: 128,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: colorScheme.primary,
+                      width: focused ? 5 : 0,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow_rounded,
+                    size: 76,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 48,
+            right: 48,
+            bottom: 48,
+            child: Text(
+              Get.arguments['title']?.toString() ?? '',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );

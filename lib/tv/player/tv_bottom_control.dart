@@ -58,6 +58,17 @@ class _TvBottomControlState extends State<TvBottomControl> {
           !widget.controller.enableShowDanmaku.value,
     ),
     _TvAction(
+      icon: Icons.speed_rounded,
+      label: '倍速',
+      onTap: () {
+        const speeds = [1.0, 1.25, 1.5, 2.0];
+        final current = widget.controller.playbackSpeed;
+        final index = speeds.indexOf(current);
+        widget.controller
+            .setPlaybackSpeed(speeds[(index + 1) % speeds.length]);
+      },
+    ),
+    _TvAction(
       icon: widget.isFullScreen
           ? Icons.fullscreen_exit_rounded
           : Icons.fullscreen_rounded,
