@@ -23,6 +23,7 @@ class PlayerFocus extends StatefulWidget {
     this.canPlay,
     this.onSkipSegment,
     this.onRefresh,
+    this.onOpenPanel,
   });
 
   final Widget child;
@@ -32,6 +33,7 @@ class PlayerFocus extends StatefulWidget {
   final ValueGetter<bool>? canPlay;
   final ValueGetter<bool>? onSkipSegment;
   final VoidCallback? onRefresh;
+  final VoidCallback? onOpenPanel;
 
   @override
   State<PlayerFocus> createState() => _PlayerFocusState();
@@ -123,6 +125,12 @@ class PlayerFocus extends StatefulWidget {
             plPlayerController.onDoubleTapCenter();
           }
           return true;
+        case LogicalKeyboardKey.arrowDown:
+          if (event is KeyDownEvent && onOpenPanel != null) {
+            onOpenPanel!();
+            return true;
+          }
+          return false;
       }
     }
 

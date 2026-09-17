@@ -70,10 +70,11 @@ import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, clampDouble;
+import 'package:flutter/services.dart' show KeyDownEvent, LogicalKeyboardKey;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide PopScope;
 import 'package:screen_brightness_platform_interface/screen_brightness_platform_interface.dart';
 
 class VideoDetailPageV extends StatefulWidget {
@@ -115,6 +116,9 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       videoDetailController.plPlayerController.pipNoDanmaku;
 
   bool isShowing = true;
+
+  /// Whether the TV bottom info panel is open.
+  bool _tvPanel = false;
 
   bool get isFullScreen =>
       videoDetailController.plPlayerController.isFullScreen.value;
@@ -1255,7 +1259,9 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   @override
   Widget build(BuildContext context) {
     Widget child;
-    if (videoDetailController.plPlayerController.isPipMode) {
+    if (PlatformUtils.isTV) {
+      child = _childWhenTv();
+    } else if (videoDetailController.plPlayerController.isPipMode) {
       child = plPlayer(width: maxWidth, height: maxHeight, isPipMode: true);
     } else if (!videoDetailController.horizontalScreen) {
       child = childWhenDisabled;
@@ -1271,6 +1277,9 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         plPlayerController: videoDetailController.plPlayerController,
         introController: introController,
         onSendDanmaku: videoDetailController.showShootDanmakuSheet,
+        onOpenPanel: PlatformUtils.isTV
+            ? () => setState(() => _tvPanel = true)
+            : null,
         canPlay: () {
           if (videoDetailController.autoPlay) {
             return true;
@@ -1285,6 +1294,83 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     return videoDetailController.plPlayerController.darkVideoPage
         ? Theme(data: theme, child: child)
         : child;
+  }
+
+  /// Android TV layout: full-screen player with a bottom info panel that is
+  /// revealed with the D-pad down key and dismissed with up/back.
+  Widget _childWhenTv() {
+    return PopScope(
+      canPop: !_tvPanel,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _tvPanel) {
+          setState(() => _tvPanel = false);
+        }
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: plPlayer(width: maxWidth, height: maxHeight),
+          ),
+          if (_tvPanel)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: maxHeight * 0.62,
+              child: _tvInfoPanel(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tvInfoPanel() {
+    final panelHeight = maxHeight * 0.62;
+    return Material(
+      color: colorScheme.surface,
+      elevation: 8,
+      child: Focus(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.arrowUp) {
+            setState(() => _tvPanel = false);
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 24, right: 24, top: 12),
+              child: buildTabBar(),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: tabBarView(
+                  controller: videoDetailController.tabCtr,
+                  children: [
+                    if (videoDetailController.isFileSource)
+                      localIntroPanel(needCtr: false)
+                    else
+                      videoIntro(
+                        width: maxWidth,
+                        height: panelHeight,
+                        isHorizontal: true,
+                        needCtr: false,
+                      ),
+                    if (videoDetailController.showReply) videoReplyPanel(),
+                    if (_shouldShowSeasonPanel) seasonPanel,
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget buildTabBar({
