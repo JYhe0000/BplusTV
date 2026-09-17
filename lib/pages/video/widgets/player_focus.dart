@@ -88,6 +88,10 @@ class PlayerFocus extends StatefulWidget {
         case LogicalKeyboardKey.select:
         case LogicalKeyboardKey.enter:
           if (event is KeyDownEvent) {
+            // Start playback first if it has not begun yet.
+            if (canPlay != null && !canPlay!()) {
+              return true;
+            }
             plPlayerController.controls =
                 !plPlayerController.showControls.value;
           }

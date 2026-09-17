@@ -70,7 +70,8 @@ import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, clampDouble;
-import 'package:flutter/services.dart' show KeyDownEvent, LogicalKeyboardKey;
+import 'package:flutter/services.dart'
+    show KeyDownEvent, LogicalKeyboardKey, HardwareKeyboard;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
@@ -172,6 +173,20 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     videoSourceInit();
 
     addObserverMobile(this);
+
+    if (PlatformUtils.isTV) {
+      HardwareKeyboard.instance.addHandler(_onTvKey);
+    }
+  }
+
+  bool _onTvKey(KeyEvent event) {
+    if (_tvPanel &&
+        event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      setState(() => _tvPanel = false);
+      return true;
+    }
+    return false;
   }
 
   // 获取视频资源，初始化播放器
@@ -363,6 +378,10 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       }
     }
     removeObserverMobile(this);
+
+    if (PlatformUtils.isTV) {
+      HardwareKeyboard.instance.removeHandler(_onTvKey);
+    }
 
     super.dispose();
   }
@@ -1309,7 +1328,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       child: Stack(
         children: [
           Positioned.fill(
-            child: plPlayer(width: maxWidth, height: maxHeight),
+            child: videoPlayer(width: maxWidth, height: maxHeight),
           ),
           if (_tvPanel)
             Positioned(
@@ -1325,49 +1344,47 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   }
 
   Widget _tvInfoPanel() {
-    final panelHeight = maxHeight * 0.62;
+    final panelHeight = maxHeight * 0.66;
+    final baseScale = MediaQuery.textScalerOf(context).scale(1);
     return Material(
       color: colorScheme.surface,
       elevation: 8,
-      child: Focus(
-        autofocus: true,
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent &&
-              event.logicalKey == LogicalKeyboardKey.arrowUp) {
-            setState(() => _tvPanel = false);
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 24, right: 24, top: 12),
-              child: buildTabBar(),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: tabBarView(
-                  controller: videoDetailController.tabCtr,
-                  children: [
-                    if (videoDetailController.isFileSource)
-                      localIntroPanel(needCtr: false)
-                    else
-                      videoIntro(
-                        width: maxWidth,
-                        height: panelHeight,
-                        isHorizontal: true,
-                        needCtr: false,
-                      ),
-                    if (videoDetailController.showReply) videoReplyPanel(),
-                    if (_shouldShowSeasonPanel) seasonPanel,
-                  ],
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(baseScale * 1.25),
+        ),
+        child: Focus(
+          autofocus: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 32, right: 32, top: 16),
+                child: buildTabBar(),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: tabBarView(
+                    controller: videoDetailController.tabCtr,
+                    children: [
+                      if (videoDetailController.isFileSource)
+                        localIntroPanel(needCtr: false)
+                      else
+                        videoIntro(
+                          width: maxWidth,
+                          height: panelHeight,
+                          isHorizontal: true,
+                          needCtr: false,
+                        ),
+                      if (videoDetailController.showReply) videoReplyPanel(),
+                      if (_shouldShowSeasonPanel) seasonPanel,
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
