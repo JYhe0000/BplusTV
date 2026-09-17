@@ -319,7 +319,9 @@ class MyApp extends StatelessWidget {
   static Widget _builder(BuildContext context, Widget? child) {
     final uiScale = Pref.uiScale;
     final mediaQuery = MediaQuery.of(context);
-    final textScaler = TextScaler.linear(Pref.defaultTextScale);
+    final textScaler = TextScaler.linear(
+      PlatformUtils.isTV ? Pref.defaultTextScale * 1.15 : Pref.defaultTextScale,
+    );
     if (uiScale != 1.0) {
       child = MediaQuery(
         data: mediaQuery.copyWith(

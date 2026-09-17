@@ -842,7 +842,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       elevation: 8,
       child: MediaQuery(
         data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(baseScale * 1.25),
+          textScaler: TextScaler.linear(baseScale * 1.1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
