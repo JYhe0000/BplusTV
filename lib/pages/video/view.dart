@@ -664,6 +664,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                       controller: plPlayerController!,
                       isFullScreen: isFullScreen,
                       introController: introController,
+                      onOpenPanel: () => setState(() => _tvPanel = true),
                     )
                   : null,
               danmuWidget: isPipMode && pipNoDanmaku
