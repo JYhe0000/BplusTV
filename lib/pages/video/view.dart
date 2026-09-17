@@ -51,6 +51,7 @@ import 'package:PiliPlus/services/shutdown_timer_service.dart'
     show shutdownTimerService;
 import 'package:PiliPlus/tv/player/tv_bottom_control.dart';
 import 'package:PiliPlus/tv/player/tv_header_control.dart';
+import 'package:PiliPlus/tv/video/tv_video_info.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/android/bindings.g.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
@@ -772,15 +773,27 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                   child: tabBarView(
                     controller: videoDetailController.tabCtr,
                     children: [
-                      if (videoDetailController.isFileSource)
-                        localIntroPanel(needCtr: false)
-                      else
-                        videoIntro(
-                          width: maxWidth,
-                          height: panelHeight,
-                          isHorizontal: true,
-                          needCtr: false,
-                        ),
+                    if (videoDetailController.isFileSource)
+                      localIntroPanel(needCtr: false)
+                    else if (videoDetailController.isUgc)
+                      CustomScrollView(
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: TvVideoInfo(controller: ugcIntroController),
+                          ),
+                          RelatedVideoPanel(
+                            key: videoRelatedKey,
+                            heroTag: heroTag,
+                          ),
+                        ],
+                      )
+                    else
+                      videoIntro(
+                        width: maxWidth,
+                        height: panelHeight,
+                        isHorizontal: true,
+                        needCtr: false,
+                      ),
                       if (videoDetailController.showReply) videoReplyPanel(),
                       if (_shouldShowSeasonPanel) seasonPanel,
                     ],
