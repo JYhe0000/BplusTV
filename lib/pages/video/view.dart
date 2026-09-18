@@ -688,6 +688,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                       controller: plPlayerController!,
                       isFullScreen: isFullScreen,
                       introController: introController,
+                      videoDetailController: videoDetailController,
                       onOpenPanel: () => setState(() => _tvPanel = true),
                     )
                   : null,

@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:PiliPlus/common/widgets/progress_bar/audio_video_progress_bar.dart';
+import 'package:PiliPlus/models/common/video/video_quality.dart';
 import 'package:PiliPlus/pages/common/common_intro_controller.dart';
+import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:flutter/services.dart';
@@ -16,12 +18,14 @@ class TvBottomControl extends StatefulWidget {
     required this.controller,
     required this.isFullScreen,
     this.introController,
+    this.videoDetailController,
     this.onOpenPanel,
   });
 
   final PlPlayerController controller;
   final bool isFullScreen;
   final CommonIntroController? introController;
+  final VideoDetailController? videoDetailController;
   final VoidCallback? onOpenPanel;
 
   @override
@@ -68,6 +72,12 @@ class _TvBottomControlState extends State<TvBottomControl> {
             .setPlaybackSpeed(speeds[(index + 1) % speeds.length]);
       },
     ),
+    if (widget.videoDetailController != null)
+      _TvAction(
+        icon: Icons.high_quality_rounded,
+        label: '画质',
+        onTap: _cycleQuality,
+      ),
     _TvAction(
       icon: widget.isFullScreen
           ? Icons.fullscreen_exit_rounded
@@ -123,6 +133,23 @@ class _TvBottomControlState extends State<TvBottomControl> {
         return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
+  }
+
+  void _cycleQuality() {
+    final ctr = widget.videoDetailController;
+    if (ctr == null) return;
+    final formats = ctr.data.supportFormats;
+    if (formats == null || formats.isEmpty) return;
+    final current = ctr.currentVideoQa.value;
+    final index = formats.indexWhere((e) => e.quality == current?.code);
+    final next = formats[(index + 1) % formats.length];
+    final code = next.quality;
+    if (code == null) return;
+    final newQa = VideoQuality.fromCode(code);
+    ctr
+      ..plPlayerController.cacheVideoQa = newQa.code
+      ..currentVideoQa.value = newQa
+      ..updatePlayer();
   }
 
   @override
