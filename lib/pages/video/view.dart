@@ -761,8 +761,13 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
           Positioned.fill(
             child: videoPlayer(width: maxWidth, height: maxHeight),
           ),
-          if (!videoDetailController.autoPlay)
-            Positioned.fill(child: _tvPoster()),
+          Positioned.fill(
+            child: Obx(
+              () => videoDetailController.autoPlay
+                  ? const SizedBox.shrink()
+                  : _tvPoster(),
+            ),
+          ),
           if (_tvPanel)
             Positioned(
               left: 0,
@@ -801,6 +806,13 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.92),
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                      ),
+                    ],
                     border: Border.all(
                       color: colorScheme.primary,
                       width: focused ? 5 : 0,
@@ -819,15 +831,37 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
             left: 48,
             right: 48,
             bottom: 48,
-            child: Text(
-              Get.arguments['title']?.toString() ?? '',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  Get.arguments['title']?.toString() ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Obx(() {
+                  if (!videoDetailController.isUgc) {
+                    return const SizedBox.shrink();
+                  }
+                  final detail = ugcIntroController.videoDetail.value;
+                  return Text(
+                    '${detail.owner?.name ?? ''}  ·  '
+                    '${NumUtils.numFormat(detail.stat?.view ?? 0)} 播放',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 20,
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
         ],
@@ -840,7 +874,11 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     final baseScale = MediaQuery.textScalerOf(context).scale(1);
     return Material(
       color: colorScheme.surface,
-      elevation: 8,
+      elevation: 12,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: MediaQuery(
         data: MediaQuery.of(context).copyWith(
           textScaler: TextScaler.linear(baseScale * 1.1),
