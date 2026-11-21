@@ -20,11 +20,6 @@ jobs:
       contents: write
     env:
       PUB_HOSTED_URL: https://pub.dev
-    # 项目源码位于仓库的 BplusTV/ 子目录。
-    defaults:
-      run:
-        working-directory: BplusTV
-
     steps:
       - name: 检出代码
         uses: actions/checkout@v7
@@ -38,14 +33,14 @@ jobs:
           java-version: "17"
           cache: "gradle"
           cache-dependency-path: |
-            BplusTV/android/*.gradle*
-            BplusTV/android/**/gradle-wrapper.properties
+            android/*.gradle*
+            android/**/gradle-wrapper.properties
 
       - name: 安装 Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version-file: BplusTV/pubspec.yaml
+          flutter-version-file: pubspec.yaml
           cache: true
 
       - name: 应用框架补丁并安装依赖
@@ -94,17 +89,17 @@ jobs:
         with:
           tag_name: ${{ inputs.tag }}
           name: ${{ inputs.tag }}
-          files: BplusTV/BPlus_TV_*.apk
+          files: BPlus_TV_*.apk
 
       - name: 上传 APK
         uses: actions/upload-artifact@v7
         with:
           archive: false
           name: Android-TV-APK
-          path: BplusTV/BPlus_TV_*.apk
+          path: BPlus_TV_*.apk
 
       - name: 上传调试符号
         uses: actions/upload-artifact@v7
         with:
           name: Android-TV-symbols
-          path: BplusTV/build/symbols/
+          path: build/symbols/
