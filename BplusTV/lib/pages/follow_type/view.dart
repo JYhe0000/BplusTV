@@ -1,0 +1,84 @@
+import 'package:bplus_tv/common/skeleton/msg_feed_top.dart';
+import 'package:bplus_tv/common/sliver_single_child_delegate.dart';
+import 'package:bplus_tv/common/widgets/flutter/refresh_indicator.dart';
+import 'package:bplus_tv/common/widgets/loading_widget/http_error.dart';
+import 'package:bplus_tv/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:bplus_tv/common/widgets/view_sliver_safe_area.dart';
+import 'package:bplus_tv/common/style.dart';
+import 'package:bplus_tv/http/loading_state.dart';
+import 'package:bplus_tv/models_new/follow/list.dart';
+import 'package:bplus_tv/pages/follow/widgets/follow_item.dart';
+import 'package:bplus_tv/pages/follow_type/controller.dart';
+import 'package:bplus_tv/utils/grid.dart';
+import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart'
+    hide SliverGridDelegateWithMaxCrossAxisExtent;
+
+abstract class FollowTypePageState<T extends StatefulWidget> extends State<T> {
+  FollowTypeController get controller;
+
+  PreferredSizeWidget? get appBar;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).colorScheme;
+    return SimpleScaffold(
+      appBar: appBar,
+      body: refreshIndicator(
+        onRefresh: controller.onRefresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          // controller: controller.scrollController,
+          slivers: [
+            ViewSliverSafeArea(
+              sliver: Obx(
+                () => _buildBody(theme, controller.loadingState.value),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  late final gridDelegate = SliverGridDelegateWithMaxCrossAxisExtent(
+    maxCrossAxisExtent: Grid.smallCardWidth * 2,
+    mainAxisExtent: 66,
+    mainAxisSpacing: Style.cardSpace / 2,
+    crossAxisSpacing: Style.cardSpace / 2,
+  );
+
+  Widget _buildBody(
+    ColorScheme theme,
+    LoadingState<List<FollowItemModel>?> loadingState,
+  ) {
+    return switch (loadingState) {
+      Loading() => SliverGrid(
+        gridDelegate: gridDelegate,
+        delegate: const SliverSingleChildDelegate(
+          count: 16,
+          child: MsgFeedTopSkeleton(),
+        ),
+      ),
+      Success(:final response) =>
+        response != null && response.isNotEmpty
+            ? SliverGrid.builder(
+                gridDelegate: gridDelegate,
+                itemBuilder: (context, index) {
+                  if (index == response.length - 1) {
+                    controller.onLoadMore();
+                  }
+                  return buildItem(index, response[index]);
+                },
+                itemCount: response.length,
+              )
+            : HttpError(onReload: controller.onReload),
+      Error(:final errMsg) => HttpError(
+        errMsg: errMsg,
+        onReload: controller.onReload,
+      ),
+    };
+  }
+
+  Widget buildItem(int index, FollowItemModel item) => FollowItem(item: item);
+}

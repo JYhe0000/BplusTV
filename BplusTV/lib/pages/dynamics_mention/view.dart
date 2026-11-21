@@ -1,0 +1,270 @@
+import 'dart:async';
+
+import 'package:bplus_tv/common/widgets/loading_widget/http_error.dart';
+import 'package:bplus_tv/common/widgets/loading_widget/loading_widget.dart';
+import 'package:bplus_tv/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:bplus_tv/common/widgets/sliver/sliver_pinned_header.dart';
+import 'package:bplus_tv/common/widgets/view_insets_safe_area.dart';
+import 'package:bplus_tv/http/loading_state.dart';
+import 'package:bplus_tv/models_new/dynamic/dyn_mention/group.dart';
+import 'package:bplus_tv/pages/dynamics/dyn_layout.dart';
+import 'package:bplus_tv/pages/dynamics_mention/controller.dart';
+import 'package:bplus_tv/pages/dynamics_mention/widgets/item.dart';
+import 'package:bplus_tv/pages/search/controller.dart' show DebounceStreamState;
+import 'package:bplus_tv/tv/tv_dialog.dart';
+import 'package:bplus_tv/utils/extension/iterable_ext.dart';
+import 'package:bplus_tv/utils/extension/scroll_controller_ext.dart';
+import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart';
+
+class DynMentionPanel extends StatefulWidget {
+  const DynMentionPanel({
+    super.key,
+    this.scrollController,
+    this.onCachePos,
+  });
+
+  final ScrollController? scrollController;
+  final ValueChanged<double>? onCachePos;
+
+  static Future<Object? /* ListOr<MentionItem> */> onDynMention(
+    BuildContext context, {
+    double offset = 0,
+    ValueChanged<double>? onCachePos,
+  }) {
+    {
+      return showDialog<Object?>(
+        context: Get.context!,
+        builder: (_) => tvDialogShell(
+          title: '@用户',
+          minWidth: 480,
+          maxWidth: 920,
+          maxHeight: 760,
+          content: DynMentionPanel(
+            onCachePos: onCachePos,
+          ),
+          actions: [
+            TvDialogAction(
+              label: '关闭',
+              autofocus: true,
+              onTap: Get.back,
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  @override
+  State<DynMentionPanel> createState() => _DynMentionPanelState();
+}
+
+class _DynMentionPanelState
+    extends DebounceStreamState<DynMentionPanel, String> {
+  final _controller = Get.put(DynMentionController());
+  @override
+  Duration get duration => const Duration(milliseconds: 300);
+
+  @override
+  void initState() {
+    super.initState();
+    if (_controller.loadingState.value is Error) {
+      _controller.onReload();
+    }
+  }
+
+  @override
+  void onValueChanged(String value) => _controller
+    ..enableClear.value = value.isNotEmpty
+    ..onRefresh().whenComplete(
+      () => WidgetsBinding.instance.addPostFrameCallback(
+        (_) => widget.scrollController?.jumpToTop(),
+      ),
+    );
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final padding = MediaQuery.paddingOf(context).bottom;
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 5),
+          child: TextField(
+            focusNode: _controller.focusNode,
+            controller: _controller.controller,
+            style: const TextStyle(fontSize: 18),
+            onChanged: ctr!.add,
+            decoration: InputDecoration(
+              visualDensity: .standard,
+              border: const OutlineInputBorder(
+                gapPadding: 0,
+                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.all(Radius.circular(25)),
+              ),
+              isDense: true,
+              filled: true,
+              fillColor: theme.colorScheme.onInverseSurface,
+              hintText: '输入你想@的人',
+              hintStyle: const TextStyle(fontSize: 16),
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(left: 12, right: 4),
+                child: Icon(Icons.search, size: 20),
+              ),
+              prefixIconConstraints: const .new(minHeight: 0, minWidth: 0),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              suffixIcon: Obx(
+                () => _controller.enableClear.value
+                    ? Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: DynFocusAction(
+                          child: Container(
+                            padding: const EdgeInsetsDirectional.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.colorScheme.secondaryContainer,
+                            ),
+                            child: Icon(
+                              Icons.clear,
+                              size: 16,
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                          onTap: () => _controller
+                            ..enableClear.value = false
+                            ..controller.clear()
+                            ..onRefresh().whenComplete(
+                              () =>
+                                  WidgetsBinding.instance.addPostFrameCallback(
+                                    (_) => widget.scrollController?.jumpToTop(),
+                                  ),
+                            ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              suffixIconConstraints: const BoxConstraints(
+                minHeight: 0,
+                minWidth: 0,
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ScaffoldLayout(
+            body: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is UserScrollNotification) {
+                  if (_controller.focusNode.hasFocus) {
+                    _controller.focusNode.unfocus();
+                  }
+                } else if (notification is ScrollEndNotification) {
+                  widget.onCachePos?.call(notification.metrics.pixels);
+                }
+                return false;
+              },
+              child: CustomScrollView(
+                controller: widget.scrollController,
+                slivers: [
+                  Obx(
+                    () => _buildBody(theme, _controller.loadingState.value),
+                  ),
+                  SliverToBoxAdapter(child: SizedBox(height: padding + 100)),
+                ],
+              ),
+            ),
+            fab: Obx(() {
+              return Padding(
+                padding: .only(
+                  right: kFloatingActionButtonMargin,
+                  bottom: kFloatingActionButtonMargin + padding,
+                ),
+                child: ViewInsetsSafeArea(
+                  child: AnimatedSlide(
+                    offset: _controller.showBtn.value
+                        ? .zero
+                        : const Offset(0, 3),
+                    duration: const Duration(milliseconds: 120),
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        if (_controller.mentionList.isNullOrEmpty) {
+                          _controller.showBtn.value = false;
+                          return;
+                        }
+                        Get.back(result: _controller.mentionList);
+                        _controller.showBtn.value = false;
+                      },
+                      child: const Icon(Icons.check),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody(
+    ThemeData theme,
+    LoadingState<List<MentionGroup>?> loadingState,
+  ) {
+    return switch (loadingState) {
+      Loading() => const SliverPadding(
+        padding: EdgeInsets.only(top: 8),
+        sliver: linearLoading,
+      ),
+      Success<List<MentionGroup>?>(:final response) =>
+        response != null && response.isNotEmpty
+            ? SliverMainAxisGroup(
+                slivers: response.map((group) {
+                  if (group.items.isNullOrEmpty) {
+                    return const SliverToBoxAdapter();
+                  }
+                  return SliverMainAxisGroup(
+                    slivers: [
+                      SliverPinnedHeader(
+                        backgroundColor: theme.bottomSheetTheme.backgroundColor,
+                        child: Padding(
+                          padding: const .symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          child: Text(
+                            group.groupName!,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SliverList.builder(
+                        itemCount: group.items!.length,
+                        itemBuilder: (context, index) {
+                          final item = group.items![index];
+                          return DynMentionItem(
+                            item: item,
+                            onTap: () => Get.back(result: item),
+                            onCheck: (value) =>
+                                _controller.onCheck(value, item),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                }).toList(),
+              )
+            : HttpError(onReload: _controller.onReload),
+      Error(:final errMsg) => HttpError(
+        errMsg: errMsg,
+        onReload: _controller.onReload,
+      ),
+    };
+  }
+}

@@ -1,0 +1,141 @@
+import 'package:bplus_tv/common/skeleton/space_opus.dart';
+import 'package:bplus_tv/common/sliver_single_child_delegate.dart';
+import 'package:bplus_tv/common/style.dart';
+import 'package:bplus_tv/common/widgets/flutter/refresh_indicator.dart';
+import 'package:bplus_tv/common/widgets/loading_widget/http_error.dart';
+import 'package:bplus_tv/http/loading_state.dart';
+import 'package:bplus_tv/models_new/space/space_shop/item.dart';
+import 'package:bplus_tv/pages/member_shop/controller.dart';
+import 'package:bplus_tv/pages/member_shop/widgets/item.dart';
+import 'package:bplus_tv/tv/tv_focus_card.dart';
+import 'package:bplus_tv/utils/grid.dart';
+import 'package:bplus_tv/utils/waterfall.dart';
+import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:waterfall_flow/waterfall_flow.dart'
+    hide SliverWaterfallFlowDelegateWithMaxCrossAxisExtent;
+
+class MemberShop extends StatefulWidget {
+  const MemberShop({
+    super.key,
+    required this.heroTag,
+    required this.mid,
+  });
+
+  final String? heroTag;
+  final int mid;
+
+  @override
+  State<MemberShop> createState() => _MemberShopState();
+}
+
+class _MemberShopState extends State<MemberShop>
+    with AutomaticKeepAliveClientMixin {
+  late final MemberShopController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Get.put(
+      MemberShopController(widget.mid),
+      tag: widget.heroTag,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return refreshIndicator(
+      isClampingScrollPhysics: true,
+      onRefresh: _controller.onRefresh,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.only(
+              top: 12,
+              left: Style.safeSpace,
+              right: Style.safeSpace,
+              bottom: MediaQuery.viewPaddingOf(context).bottom + 100,
+            ),
+            sliver: Obx(() => _buildBody(_controller.loadingState.value)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+
+  late final gridDelegate = SliverWaterfallFlowDelegateWithMaxCrossAxisExtent(
+    maxCrossAxisExtent: Grid.smallCardWidth,
+    mainAxisSpacing: Style.safeSpace,
+    crossAxisSpacing: Style.safeSpace,
+  );
+
+  void _onShowMore() {
+    if (_controller.clickUrl case final clickUrl?) {
+      final url = Uri.parse(clickUrl).queryParameters['url'];
+      if (url case final url?) {
+        Get.toNamed('/webview', parameters: {'url': url});
+      }
+    }
+  }
+
+  Widget _buildBody(LoadingState<List<SpaceShopItem>?> loadingState) {
+    switch (loadingState) {
+      case Loading():
+        return SliverWaterfallFlow(
+          gridDelegate: gridDelegate,
+          delegate: const SliverSingleChildDelegate(
+            count: 10,
+            child: SpaceOpusSkeleton(),
+          ),
+        );
+      case Success(:final response):
+        if (response == null || response.isEmpty) {
+          return HttpError(onReload: _controller.onReload);
+        }
+        Widget sliver = SliverWaterfallFlow(
+          gridDelegate: gridDelegate,
+          delegate: SliverChildBuilderDelegate(
+            (_, index) {
+              return MemberShopItem(item: response[index]);
+            },
+            childCount: response.length,
+          ),
+        );
+        if (_controller.showMoreTab == true) {
+          sliver = SliverMainAxisGroup(
+            slivers: [
+              sliver,
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 25),
+                  child: Center(
+                    child: TvFocusButton(
+                      onTap: _onShowMore,
+                      child: FilledButton.tonal(
+                        onPressed: _onShowMore,
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        child: Text(_controller.showMoreDesc ?? ''),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+        return sliver;
+      case Error(:final errMsg):
+        return HttpError(
+          errMsg: errMsg,
+          onReload: _controller.onReload,
+        );
+    }
+  }
+}

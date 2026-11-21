@@ -1,173 +1,110 @@
-name: Build
+name: Build Android TV
 
 on:
-    # pull_request:
-    #     types:
-    #         - opened
-    #         - synchronize
-    #         - reopened
-    #         - ready_for_review
-    #     paths-ignore:
-    #         - "**.md"
-    workflow_dispatch:
-        inputs:
-            build_android:
-                description: "Build Android"
-                required: false
-                default: true
-                type: boolean
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "发布标签（留空则仅上传构建产物）"
+        required: false
+        default: ""
+        type: string
 
-            build_ios:
-                description: "Build iOS"
-                required: false
-                default: true
-                type: boolean
-
-            build_mac:
-                description: "Build Mac"
-                required: false
-                default: true
-                type: boolean
-
-            build_win_x64:
-                description: "Build Win-x64"
-                required: false
-                default: true
-                type: boolean
-
-            build_linux_x64:
-                description: "Build Linux-x64"
-                required: false
-                default: true
-                type: boolean
-
-            tag:
-                description: "tag"
-                required: false
-                default: ""
-                type: string
+permissions:
+  contents: read
 
 jobs:
-    android:
-        if: ${{ (github.event_name == 'pull_request' && github.repository == 'bggRGjQaUbCoE/PiliPlus') || github.event.inputs.build_android == 'true' }}
-        name: Release Android
-        runs-on: ubuntu-latest
-        permissions: write-all
+  android-tv:
+    name: Android TV APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      PUB_HOSTED_URL: https://pub.dev
+    # 项目源码位于仓库的 BplusTV/ 子目录。
+    defaults:
+      run:
+        working-directory: BplusTV
 
-        steps:
-            - name: 代码迁出
-              uses: actions/checkout@v7
-              with:
-                  fetch-depth: 0
-
-            - name: 构建Java环境
-              uses: actions/setup-java@v5
-              with:
-                  distribution: "zulu"
-                  java-version: "17"
-                  cache: "gradle"
-                  cache-dependency-path: |
-                      android/*.gradle*
-                      android/**/gradle-wrapper.properties
-
-            - name: 安装Flutter
-              uses: subosito/flutter-action@v2
-              id: flutter-action
-              with:
-                  channel: stable
-                  flutter-version-file: pubspec.yaml
-                  cache: true
-
-            - name: Apply Patch
-              shell: pwsh
-              run: lib/scripts/patch.ps1 android
-
-            - name: Write key
-              if: github.event_name == 'workflow_dispatch'
-              run: |
-                  if [ ! -z "${{ secrets.SIGN_KEYSTORE_BASE64 }}" ]; then
-                    echo "${{ secrets.SIGN_KEYSTORE_BASE64 }}" | base64 --decode > android/app/key.jks
-                    echo storeFile='key.jks' >> android/key.properties
-                    echo storePassword='${{ secrets.KEYSTORE_PASSWORD }}' >> android/key.properties
-                    echo keyAlias='${{ secrets.KEY_ALIAS }}' >> android/key.properties
-                    echo keyPassword='${{ secrets.KEY_PASSWORD }}' >> android/key.properties
-                  fi
-
-            - name: Set and Extract version
-              if: ${{ github.event_name == 'workflow_dispatch' }}
-              shell: pwsh
-              run: lib/scripts/build.ps1 android
-
-            - name: Flutter Build Release Apk
-              if: ${{ github.event_name == 'workflow_dispatch' }}
-              run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --no-pub --obfuscate --split-debug-info=build/symbols
-
-            - name: Flutter Build Dev Apk
-              if: ${{ github.event_name == 'pull_request' }}
-              run: |
-                  flutter build apk --release --split-per-abi --android-project-arg dev=1 --no-pub
-
-            - name: Rename
-              run: |
-                  for file in build/app/outputs/flutter-apk/app-*-release.apk; do
-                    abi=$(echo "$file" | sed -E 's|.*app-(.*)-release\.apk|\1|')
-                    mv "$file" "PiliPlus_android_${{ env.version }}_${abi}.apk"
-                  done
-              shell: bash
-
-            - name: Release
-              if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' }}
-              uses: softprops/action-gh-release@v3
-              with:
-                  tag_name: ${{ github.event.inputs.tag }}
-                  name: ${{ github.event.inputs.tag }}
-                  files: PiliPlus_android_*.apk
-
-            - name: 上传
-              uses: actions/upload-artifact@v7
-              with:
-                  archive: false
-                  name: Android_arm64-v8a
-                  path: PiliPlus_android_*_arm64-v8a.apk
-
-            - name: 上传
-              uses: actions/upload-artifact@v7
-              with:
-                  archive: false
-                  name: Android_armeabi-v7a
-                  path: PiliPlus_android_*_armeabi-v7a.apk
-
-            - name: 上传
-              uses: actions/upload-artifact@v7
-              with:
-                  archive: false
-                  name: Android_x86_64
-                  path: PiliPlus_android_*_x86_64.apk
-
-    ios:
-        if: ${{ (github.event_name == 'pull_request' && github.repository == 'bggRGjQaUbCoE/PiliPlus') || github.event.inputs.build_ios == 'true' }}
-        uses: ./.github/workflows/ios.yml
-        permissions: write-all
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
         with:
-            tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
+          fetch-depth: 0
 
-    mac:
-        if: ${{ github.event.inputs.build_mac == 'true' }}
-        uses: ./.github/workflows/mac.yml
-        permissions: write-all
+      - name: 安装 Java
+        uses: actions/setup-java@v5
         with:
-            tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
+          cache-dependency-path: |
+            BplusTV/android/*.gradle*
+            BplusTV/android/**/gradle-wrapper.properties
 
-    win_x64:
-        if: ${{ (github.event_name == 'pull_request' && github.repository == 'bggRGjQaUbCoE/PiliPlus') || github.event.inputs.build_win_x64 == 'true' }}
-        uses: ./.github/workflows/win_x64.yml
-        permissions: write-all
+      - name: 安装 Flutter
+        uses: subosito/flutter-action@v2
         with:
-            tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
+          channel: stable
+          flutter-version-file: BplusTV/pubspec.yaml
+          cache: true
 
-    linux_x64:
-        if: ${{ github.event.inputs.build_linux_x64 == 'true' }}
-        uses: ./.github/workflows/linux_x64.yml
-        permissions: write-all
+      - name: 应用框架补丁并安装依赖
+        shell: pwsh
+        run: lib/scripts/patch.ps1
+
+      - name: 写入签名配置
+        env:
+          SIGN_KEYSTORE_BASE64: ${{ secrets.SIGN_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        shell: bash
+        run: |
+          if [ -n "$SIGN_KEYSTORE_BASE64" ]; then
+            printf '%s' "$SIGN_KEYSTORE_BASE64" | base64 --decode > android/app/key.jks
+            printf 'storeFile=key.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
+          fi
+
+      - name: 生成版本信息
+        shell: pwsh
+        run: lib/scripts/build.ps1
+
+      - name: 静态分析
+        run: flutter analyze --no-pub --no-fatal-infos
+
+      - name: 运行测试
+        run: flutter test --no-pub
+
+      - name: 构建 TV APK
+        run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --no-pub --obfuscate --split-debug-info=build/symbols
+
+      - name: 命名安装包
+        shell: bash
+        run: |
+          for file in build/app/outputs/flutter-apk/app-*-release.apk; do
+            abi="${file##*/app-}"
+            abi="${abi%-release.apk}"
+            mv "$file" "BPlus_TV_${version}_${abi}.apk"
+          done
+
+      - name: 发布
+        if: inputs.tag != ''
+        uses: softprops/action-gh-release@v3
         with:
-            tag: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.tag }}
+          files: BplusTV/BPlus_TV_*.apk
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          name: Android-TV-APK
+          path: BplusTV/BPlus_TV_*.apk
+
+      - name: 上传调试符号
+        uses: actions/upload-artifact@v7
+        with:
+          name: Android-TV-symbols
+          path: BplusTV/build/symbols/

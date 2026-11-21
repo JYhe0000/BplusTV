@@ -1,0 +1,130 @@
+import 'package:bplus_tv/common/style.dart';
+import 'package:bplus_tv/common/widgets/badge.dart';
+import 'package:bplus_tv/common/widgets/image/image_save.dart';
+import 'package:bplus_tv/common/widgets/image/network_img_layer.dart';
+import 'package:bplus_tv/models_new/space/space_fav/list.dart';
+import 'package:bplus_tv/pages/subscription_detail/view.dart';
+import 'package:bplus_tv/tv/tv_focus_card.dart';
+import 'package:bplus_tv/utils/bili_utils.dart';
+import 'package:bplus_tv/utils/num_utils.dart';
+import 'package:bplus_tv/utils/utils.dart';
+import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart';
+
+class MemberFavItem extends StatelessWidget {
+  const MemberFavItem({super.key, required this.item, this.onDelete});
+
+  final SpaceFavItemModel item;
+  final ValueChanged<bool?>? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    void onLongPress() => imageSaveDialog(
+      title: item.title,
+      cover: item.cover,
+    );
+    Future<void> onTap() async {
+      if (item.state == 1) {
+        // invalid
+        return;
+      }
+
+      if (item.type == 0 || item.type == 11) {
+        final isDeleted = await Get.toNamed(
+          '/favDetail',
+          parameters: {
+            'mediaId': item.id.toString(),
+            'heroTag': Utils.makeHeroTag(item.id),
+          },
+        );
+        onDelete?.call(isDeleted);
+      } else {
+        SubDetailPage.toSubDetailPage(
+          item.id!,
+          subInfo: item,
+        );
+      }
+    }
+
+    final card = Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        canRequestFocus: false,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Style.safeSpace,
+            vertical: 5,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AspectRatio(
+                    aspectRatio: Style.aspectRatio,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => NetworkImgLayer(
+                        src: item.cover,
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
+                      ),
+                    ),
+                  ),
+                  if (item.type == 21)
+                    const PBadge(
+                      right: 6,
+                      top: 6,
+                      text: '合集',
+                    )
+                  else if (item.type == 11)
+                    const PBadge(
+                      right: 6,
+                      top: 6,
+                      text: '收藏夹',
+                    ),
+                ],
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    Text(
+                      item.type == 0
+                          ? '${item.mediaCount}个内容 · ${BiliUtils.isPublicFavText(item.attr)}'
+                          : item.type == 11
+                          ? '${item.mediaCount}个内容 · ${item.upper?.name}'
+                          : item.type == 21
+                          ? '创建者: ${item.upper?.name}\n${item.mediaCount}个视频 · ${NumUtils.numFormat(item.viewCount)}播放'
+                          : '${item.mediaCount}个内容',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return TvFocusCard(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: card,
+    );
+  }
+}

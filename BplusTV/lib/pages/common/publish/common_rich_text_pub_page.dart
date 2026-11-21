@@ -1,0 +1,485 @@
+import 'dart:io' show File, HttpException;
+
+import 'package:bplus_tv/common/style.dart';
+import 'package:bplus_tv/common/widgets/button/icon_button.dart';
+import 'package:bplus_tv/common/widgets/button/toolbar_icon_button.dart';
+import 'package:bplus_tv/common/widgets/flutter/text_field/controller.dart';
+import 'package:bplus_tv/common/widgets/flutter/text_field/text_field.dart';
+import 'package:bplus_tv/http/msg.dart';
+import 'package:bplus_tv/models/common/image_preview_type.dart';
+import 'package:bplus_tv/models/common/publish_panel_type.dart';
+import 'package:bplus_tv/models/dynamics/result.dart'
+    show PicModel, FilePicModel, OpusPicModel;
+import 'package:bplus_tv/models_new/dynamic/dyn_mention/item.dart';
+import 'package:bplus_tv/models_new/emote/emote.dart' as e;
+import 'package:bplus_tv/models_new/live/live_emote/emoticon.dart';
+import 'package:bplus_tv/pages/common/publish/common_publish_page.dart';
+import 'package:bplus_tv/pages/dynamics_mention/view.dart';
+import 'package:bplus_tv/utils/extension/file_ext.dart';
+import 'package:bplus_tv/utils/extension/num_ext.dart';
+import 'package:bplus_tv/utils/feed_back.dart';
+import 'package:bplus_tv/utils/image_utils.dart';
+import 'package:bplus_tv/utils/page_utils.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart'
+    hide CacheManager;
+import 'package:dio/dio.dart' show CancelToken;
+import 'package:easy_debounce/easy_throttle.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
+import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:material_ui/material_ui.dart';
+
+abstract class CommonRichTextPubPage
+    extends CommonPublishPage<List<RichTextItem>> {
+  const CommonRichTextPubPage({
+    super.key,
+    this.items,
+    this.pics,
+    super.onSave,
+    super.autofocus,
+    super.imageLengthLimit,
+  });
+
+  final List<RichTextItem>? items;
+  final List<PicModel>? pics;
+}
+
+abstract class CommonRichTextPubPageState<T extends CommonRichTextPubPage>
+    extends CommonPublishPageState<T> {
+  final key = GlobalKey<RichTextFieldState>();
+  late final imagePicker = ImagePicker();
+  late final RxList<PicModel> imageList;
+  int get limit => widget.imageLengthLimit ?? 9;
+
+  @override
+  late final RichTextEditingController editController;
+
+  @override
+  void initPubState() {
+    editController = RichTextEditingController(
+      items: widget.items,
+      onMention: onMention,
+    );
+    if (editController.rawText.trim().isNotEmpty) {
+      enablePublish.value = true;
+    }
+    imageList = RxList<PicModel>(widget.pics ?? <PicModel>[]);
+  }
+
+  @override
+  void dispose() {
+    // TV 与移动端统一：丢弃未发布的本地图片，清理临时文件
+    for (final img in imageList) {
+      if (img is FilePicModel) {
+        File(img.path).tryDel();
+      }
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    editController.richStyle = null;
+    super.didChangeDependencies();
+  }
+
+  Widget buildImage(int index, double height) {
+    final color = Theme.of(
+      context,
+    ).colorScheme.secondaryContainer.withValues(alpha: 0.5);
+
+    void onClear() {
+      final image = imageList.removeAt(index);
+      if (image is FilePicModel) {
+        File(image.path).tryDel();
+      }
+      if (imageList.isEmpty && editController.rawText.trim().isEmpty) {
+        enablePublish.value = false;
+      }
+    }
+
+    final image = imageList[index];
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        GestureDetector(
+          onTap: () => PageUtils.imageView(
+            imgList: imageList
+                .map(
+                  (img) => switch (img) {
+                    FilePicModel e => SourceModel(
+                      url: e.path,
+                      sourceType: .fileImage,
+                    ),
+                    OpusPicModel e => SourceModel(
+                      url: e.url!,
+                      sourceType: .networkImage,
+                    ),
+                  },
+                )
+                .toList(),
+            initialPage: index,
+          ),
+          // TV 遥控器长按 / 鼠标右键均可删除图片
+          onLongPress: () {
+            Feedback.forLongPress(context);
+            onClear();
+          },
+          onSecondaryTap: onClear,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(4)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 42),
+              child: switch (image) {
+                FilePicModel e => Image.file(
+                  File(e.path),
+                  height: height,
+                  filterQuality: .low,
+                  cacheHeight: height.cacheSize(context),
+                ),
+                OpusPicModel e => CachedNetworkImage(
+                  imageUrl: ImageUtils.thumbnailUrl(e.url!),
+                  height: height,
+                  filterQuality: .low,
+                  memCacheHeight: height.cacheSize(context),
+                  fadeInDuration: .zero,
+                  fadeOutDuration: .zero,
+                  placeholder: (_, _) => const SizedBox(width: 42),
+                ),
+              },
+            ),
+          ),
+        ),
+        Positioned(
+          top: 5,
+          right: 5,
+          child: iconButton(
+            icon: const Icon(Icons.clear),
+            onPressed: onClear,
+            size: 24,
+            iconSize: 14,
+            bgColor: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void onPickImage([VoidCallback? callback]) {
+    EasyThrottle.throttle(
+      'imagePicker',
+      const Duration(milliseconds: 500),
+      () async {
+        try {
+          final pickedFiles = await imagePicker.pickMultiImage(
+            limit: limit,
+            imageQuality: 100,
+            requestFullMetadata: false,
+          );
+          if (pickedFiles.isNotEmpty) {
+            for (int i = 0; i < pickedFiles.length; i++) {
+              if (imageList.length == limit) {
+                SmartDialog.showToast('最多选择$limit张图片');
+                break;
+              } else {
+                imageList.add(FilePicModel(path: pickedFiles[i].path));
+              }
+            }
+            callback?.call();
+          }
+        } catch (e) {
+          SmartDialog.showToast(e.toString());
+        }
+      },
+    );
+  }
+
+  void onChooseEmote(dynamic emote, double? width, double? height) {
+    if (emote is e.Emote) {
+      final isTextEmote = width == null;
+      onInsertText(
+        isTextEmote ? emote.text! : Style.placeHolder,
+        .emoji,
+        rawText: emote.text!,
+        emote: isTextEmote
+            ? null
+            : Emote(
+                url: emote.url!,
+                width: width,
+                height: height,
+              ),
+      );
+    } else if (emote is Emoticon) {
+      onInsertText(
+        Style.placeHolder,
+        .emoji,
+        rawText: emote.emoji!,
+        emote: Emote(
+          url: emote.url!,
+          width: width!,
+          height: height,
+        ),
+      );
+    }
+  }
+
+  List<Map<String, dynamic>>? getRichContent() {
+    if (editController.items.isEmpty) return null;
+    final list = <Map<String, dynamic>>[];
+    for (final e in editController.items) {
+      switch (e.type) {
+        case .text || .composing || .common || .latex:
+          list.add({
+            "raw_text": e.text,
+            "type": 1,
+            "biz_id": "",
+          });
+        case .at:
+          list
+            ..add({
+              "raw_text": '@${e.rawText}',
+              "type": 2,
+              "biz_id": e.id,
+            })
+            ..add({
+              "raw_text": ' ',
+              "type": 1,
+              "biz_id": "",
+            });
+        case .emoji:
+          list.add({
+            "raw_text": e.rawText,
+            "type": 9,
+            "biz_id": "",
+          });
+        case .vote:
+          list
+            ..add({
+              "raw_text": e.rawText,
+              "type": 4,
+              "biz_id": e.id,
+            })
+            ..add({
+              "raw_text": ' ',
+              "type": 1,
+              "biz_id": "",
+            });
+      }
+    }
+    return list;
+  }
+
+  late double _mentionOffset = 0;
+  Future<void>? onMention([bool fromClick = false]) async {
+    final res = await DynMentionPanel.onDynMention(
+      context,
+      offset: _mentionOffset,
+      onCachePos: (offset) => _mentionOffset = offset,
+    );
+    if (res != null) {
+      if (res is MentionItem) {
+        _onInsertUser(res, fromClick);
+      } else if (res is Set<MentionItem>) {
+        for (final e in res) {
+          _onInsertUser(e..checked = false, fromClick);
+          fromClick = true;
+        }
+        res.clear();
+      }
+    }
+  }
+
+  void _onInsertUser(MentionItem e, bool fromClick) {
+    onInsertText(
+      '@${e.name} ',
+      .at,
+      rawText: e.name,
+      id: e.uid,
+      fromClick: fromClick,
+    );
+  }
+
+  void onInsertText(
+    String text,
+    RichTextType type, {
+    String? rawText,
+    Emote? emote,
+    String? id,
+    bool? fromClick,
+  }) {
+    if (text.isEmpty) {
+      return;
+    }
+
+    enablePublish.value = true;
+
+    final oldValue = editController.value;
+    final selection = oldValue.selection;
+
+    if (selection.isValid) {
+      TextEditingDelta delta;
+
+      if (selection.isCollapsed) {
+        if (type == .at && fromClick == false) {
+          delta = RichTextEditingDeltaReplacement(
+            oldText: oldValue.text,
+            replacementText: text,
+            replacedRange: TextRange(
+              start: selection.start - 1,
+              end: selection.end,
+            ),
+            selection: TextSelection.collapsed(
+              offset: selection.start - 1 + text.length,
+            ),
+            composing: TextRange.empty,
+            rawText: rawText,
+            type: type,
+            emote: emote,
+            id: id,
+          );
+        } else {
+          delta = RichTextEditingDeltaInsertion(
+            oldText: oldValue.text,
+            textInserted: text,
+            insertionOffset: selection.start,
+            selection: TextSelection.collapsed(
+              offset: selection.start + text.length,
+            ),
+            composing: TextRange.empty,
+            rawText: rawText,
+            type: type,
+            emote: emote,
+            id: id,
+          );
+        }
+      } else {
+        delta = RichTextEditingDeltaReplacement(
+          oldText: oldValue.text,
+          replacementText: text,
+          replacedRange: selection,
+          selection: TextSelection.collapsed(
+            offset: selection.start + text.length,
+          ),
+          composing: TextRange.empty,
+          rawText: rawText,
+          type: type,
+          emote: emote,
+          id: id,
+        );
+      }
+
+      final newValue = delta.apply(oldValue);
+
+      if (oldValue == newValue) {
+        return;
+      }
+
+      editController
+        ..syncRichText(delta)
+        ..value = newValue;
+    } else {
+      editController.items
+        ..clear()
+        ..add(
+          RichTextItem(
+            type: type,
+            text: text,
+            rawText: rawText,
+            range: TextRange(
+              start: 0,
+              end: text.length,
+            ),
+            emote: emote,
+            id: id,
+          ),
+        );
+      editController.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+
+    key.currentState?.scheduleShowCaretOnScreen(withAnimation: true);
+  }
+
+  @override
+  void onSave() => widget.onSave?.call(editController.items);
+
+  Widget get emojiBtn => Obx(
+    () {
+      final isEmoji = panelType.value == PanelType.emoji;
+      return ToolbarIconButton(
+        tooltip: isEmoji ? '输入' : '表情',
+        onPressed: () => updatePanelType(isEmoji ? .keyboard : .emoji),
+        icon: isEmoji
+            ? const Icon(Icons.keyboard, size: 22)
+            : const Icon(Icons.emoji_emotions, size: 22),
+        selected: isEmoji,
+      );
+    },
+  );
+
+  Widget get atBtn => ToolbarIconButton(
+    onPressed: () => onMention(true),
+    icon: const Icon(Icons.alternate_email, size: 22),
+    tooltip: '@',
+    selected: false,
+  );
+
+  Widget get moreBtn => Obx(
+    () {
+      final isMore = panelType.value == PanelType.more;
+      return ToolbarIconButton(
+        tooltip: isMore ? '输入' : '更多',
+        onPressed: () => updatePanelType(isMore ? .keyboard : .more),
+        icon: isMore
+            ? const Icon(Icons.keyboard, size: 22)
+            : const Icon(Icons.add_circle_outline, size: 22),
+        selected: isMore,
+      );
+    },
+  );
+
+  @override
+  Future<void> onPublish() async {
+    feedBack();
+    List<Map<String, dynamic>>? pictures;
+    if (imageList.isNotEmpty) {
+      SmartDialog.showLoading(msg: '正在上传图片...');
+      final cancelToken = CancelToken();
+      try {
+        pictures = await Future.wait<Map<String, dynamic>>(
+          imageList.map((img) async {
+            switch (img) {
+              case FilePicModel e:
+                final result = await MsgHttp.uploadBfs(
+                  path: e.path,
+                  category: 'daily',
+                  biz: 'new_dyn',
+                  cancelToken: cancelToken,
+                );
+                final data = result.data;
+                return {
+                  'img_width': data.imageWidth,
+                  'img_height': data.imageHeight,
+                  'img_size': data.imgSize,
+                  'img_src': data.imageUrl,
+                };
+              case OpusPicModel e:
+                return e.toJson();
+            }
+          }),
+          eagerError: true,
+        );
+        SmartDialog.dismiss();
+      } on HttpException catch (e) {
+        cancelToken.cancel();
+        SmartDialog.dismiss();
+        SmartDialog.showToast(e.message);
+        return;
+      }
+    }
+    return onCustomPublish(pictures: pictures);
+  }
+}

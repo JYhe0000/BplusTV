@@ -1,0 +1,125 @@
+import 'package:bplus_tv/common/widgets/flutter/refresh_indicator.dart';
+import 'package:bplus_tv/common/widgets/loading_widget/http_error.dart';
+import 'package:bplus_tv/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:bplus_tv/http/loading_state.dart';
+import 'package:bplus_tv/models/dynamics/result.dart';
+import 'package:bplus_tv/pages/dynamics/widgets/dynamic_panel.dart';
+import 'package:bplus_tv/pages/member_dynamics/controller.dart';
+import 'package:bplus_tv/tv/tv_focus_card.dart';
+import 'package:bplus_tv/tv/tv_page_focus.dart';
+import 'package:bplus_tv/utils/global_data.dart';
+import 'package:bplus_tv/utils/page_utils.dart';
+import 'package:bplus_tv/utils/utils.dart';
+import 'package:bplus_tv/utils/waterfall.dart';
+import 'package:get/get.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:waterfall_flow/waterfall_flow.dart'
+    hide SliverWaterfallFlowDelegateWithMaxCrossAxisExtent;
+
+class MemberDynamicsPage extends StatefulWidget {
+  const MemberDynamicsPage({super.key, this.mid});
+
+  final int? mid;
+
+  @override
+  State<MemberDynamicsPage> createState() => _MemberDynamicsPageState();
+}
+
+class _MemberDynamicsPageState extends State<MemberDynamicsPage>
+    with AutomaticKeepAliveClientMixin, DynMixin {
+  late MemberDynamicsController _memberDynamicController;
+  late int mid;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    mid = widget.mid ?? int.parse(Get.parameters['mid']!);
+    final String heroTag = Utils.makeHeroTag(mid);
+    _memberDynamicController = Get.put(
+      MemberDynamicsController(mid),
+      tag: heroTag,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final padding = MediaQuery.viewPaddingOf(context);
+    if (widget.mid == null) {
+      final content = SimpleScaffold(
+        appBar: AppBar(title: const Text('我的动态')),
+        body: Padding(
+          padding: EdgeInsets.only(
+            left: padding.left,
+            right: padding.right,
+          ),
+          child: _buildBody(padding),
+        ),
+      );
+      return TvPageFocus(child: content);
+    }
+    return _buildBody(padding);
+  }
+
+  Widget _buildBody(EdgeInsets padding) => refreshIndicator(
+    isClampingScrollPhysics: widget.mid != null,
+    onRefresh: _memberDynamicController.onRefresh,
+    child: CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsets.only(bottom: padding.bottom + 100),
+          sliver: buildPage(
+            Obx(
+              () => _buildContent(_memberDynamicController.loadingState.value),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildContent(LoadingState<List<DynamicItemModel>?> loadingState) {
+    return switch (loadingState) {
+      Loading() => dynSkeleton,
+      Success(:final response) =>
+        response != null && response.isNotEmpty
+            ? GlobalData().dynamicsWaterfallFlow
+                  ? SliverWaterfallFlow(
+                      gridDelegate: dynGridDelegate,
+                      delegate: SliverChildBuilderDelegate(
+                        (_, index) => _itemBuilder(response, index),
+                        childCount: response.length,
+                      ),
+                    )
+                  : SliverList.builder(
+                      itemBuilder: (context, index) =>
+                          _itemBuilder(response, index),
+                      itemCount: response.length,
+                    )
+            : HttpError(onReload: _memberDynamicController.onReload),
+      Error(:final errMsg) => HttpError(
+        errMsg: errMsg,
+        onReload: _memberDynamicController.onReload,
+      ),
+    };
+  }
+
+  Widget _itemBuilder(List<DynamicItemModel> list, int index) {
+    if (index == list.length - 1) {
+      _memberDynamicController.onLoadMore();
+    }
+    return TvFocusCard(
+      radius: 12,
+      onTap: () => PageUtils.pushDynDetail(list[index]),
+      child: DynamicPanel(
+        item: list[index],
+        onRemove: _memberDynamicController.onRemove,
+        onSetTop: _memberDynamicController.onSetTop,
+      ),
+    );
+  }
+}
