@@ -1,7 +1,9 @@
 abstract final class BuildConfig {
   /// 当前 TV 分支的 GitHub 发布仓库，格式为 owner/repo。
+  /// 默认即本项目发布仓库，可用 --dart-define=pili.repository=owner/repo 覆盖。
   static const String releaseRepository = String.fromEnvironment(
     'pili.repository',
+    defaultValue: 'JYhe0000/BplusTV',
   );
 
   static const int versionCode = int.fromEnvironment(

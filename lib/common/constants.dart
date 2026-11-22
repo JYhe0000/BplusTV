@@ -1,6 +1,6 @@
 abstract final class Constants {
   static const appName = 'BplusTV';
-  static const sourceCodeUrl = 'https://github.com/bggRGjQaUbCoE/PiliPlus';
+  static const sourceCodeUrl = 'https://github.com/JYhe0000/BplusTV';
 
   // 27eb53fc9058f8c3  移动端 Android
   // 4409e2ce8ffd12b8  HD版
