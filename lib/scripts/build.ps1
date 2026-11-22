@@ -7,8 +7,8 @@ try {
 
     $updatedContent = foreach ($line in (Get-Content -Path 'pubspec.yaml' -Encoding UTF8)) {
         if ($line -match '^\s*version:\s*([\d\.]+)') {
+            # 版本名保持干净（1.0.0），commit 信息经 pili.hash 在关于页展示。
             $versionName = $matches[1]
-            $versionName += '-' + $commitHash.Substring(0, 9)
             "version: $versionName+$versionCode"
         }
         else {
@@ -34,7 +34,7 @@ try {
 
     $data | ConvertTo-Json -Compress | Out-File 'pili_release.json' -Encoding UTF8
 
-    Add-Content -Path $env:GITHUB_ENV -Value "version=$versionName+$versionCode"
+    Add-Content -Path $env:GITHUB_ENV -Value "version=$versionName"
 }
 catch {
     Write-Error "Prebuild Error: $($_.Exception.Message)"
