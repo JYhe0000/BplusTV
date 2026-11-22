@@ -1,7 +1,7 @@
 <div align="center">
   <img width="250" height="141" src="assets/images/logo/logo_banner.png" alt="BplusTV">
   <h1>BplusTV</h1>
-  <p>使用 Flutter 开发的哔哩哔哩第三方 Android TV 客户端</p>
+  <p>使用 Flutter 开发的第三方 Android TV 客户端</p>
 </div>
 
 本项目仅面向 **Android TV / Google TV**，以横屏大屏和遥控器操作为核心。支持 Android 8.0（API 26）及以上版本，安装后从电视启动器进入。
