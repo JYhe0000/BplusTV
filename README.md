@@ -23,6 +23,28 @@
 
 
 
+## 项目结构
+
+```text
+PiliPlus/
+├── BplusTV/                       
+│   ├── android/                   # Android 原生工程（TV 启动器、图标与横幅配置）
+│   ├── assets/                    # 静态资源（logo、字体、着色器等）
+│   ├── lib/                       # Dart 源码
+│   │   ├── pages/                 # 内容页面（推荐、热门、搜索、设置等）
+│   │   ├── tv/                    # TV 专用页面与控件
+│   │   ├── common/                # 共用组件（焦点、滚动等）
+│   │   ├── http/  grpc/  tcp/     # 网络请求、gRPC 与长连接
+│   │   ├── models/  models_new/   # 数据模型
+│   │   ├── smartisan/             # Smartisan OS 风格主题
+│   │   ├── router/  services/  utils/  plugin/
+│   │   ├── scripts/               # 环境补丁脚本（patch.ps1）
+│   │   └── main.dart              # 应用入口
+│   ├── screenshot/                # README 配图（720p）
+│   ├── tool/                      # jnigen 工具脚本
+│   └── pubspec.yaml               # 依赖与图标/启动画面生成配置
+```
+
 ## 开发与验证
 
 使用 Flutter **3.47.9**（Dart **3.13.7**）及 Android SDK。项目依赖带补丁的 Flutter SDK 和 `material_ui 1.3.0`，首次配置需使用独立 SDK 并执行补丁脚本。脚本需要 PowerShell，支持在 macOS、Linux 或 Windows 上开发 Android TV 应用。
