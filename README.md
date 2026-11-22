@@ -58,3 +58,7 @@ GitHub Actions 的 **Build Android TV** 工作流会执行分析、测试并构�
 本项目仅用于学习和测试。所用 API 来自官方网站，不提供破解内容。
 
 基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 修改，感谢 [PiliPala](https://github.com/guozhigq/pilipala)、[PiliPalaX](https://github.com/orz12/PiliPalaX) 及上游贡献者。其他主要依赖包括 [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)、[media-kit](https://github.com/media-kit/media-kit) 和 [dio](https://pub.dev/packages/dio)。
+
+## Buy me a coffee
+
+[点击Buy me a coffee](https://jyhe0000.github.io/coffee/)
