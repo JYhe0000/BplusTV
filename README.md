@@ -47,7 +47,7 @@ PUB_HOSTED_URL=https://pub.dev flutter pub get
 flutter build apk --release --split-per-abi
 ```
 
-APK 位于 `build/app/outputs/flutter-apk/`，提供 `armeabi-v7a`、`arm64-v8a` 和 `x86_64`，用于电视、机顶盒和 TV 模拟器。可选签名配置放在 `android/key.properties`。
+APK 位于 `build/app/outputs/flutter-apk/`，提供 `armeabi-v7a`、`arm64-v8a` 和全架构 `universal` 包，用于电视、机顶盒和 TV 模拟器。可选签名配置放在 `android/key.properties`。
 
 GitHub Actions 的 **Build Android TV** 工作流会执行分析、测试并构建 TV APK；填写发布标签后上传到对应 Release。
 

@@ -35,6 +35,9 @@ try {
     $data | ConvertTo-Json -Compress | Out-File 'pili_release.json' -Encoding UTF8
 
     Add-Content -Path $env:GITHUB_ENV -Value "version=$versionName"
+    $buildDate = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId(
+        [DateTimeOffset]::Now, 'China Standard Time').ToString('yyyy-MM-dd HH:mm')
+    Add-Content -Path $env:GITHUB_ENV -Value "build_date=$buildDate"
 }
 catch {
     Write-Error "Prebuild Error: $($_.Exception.Message)"
