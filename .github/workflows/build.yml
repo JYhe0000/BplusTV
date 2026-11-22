@@ -94,7 +94,7 @@ jobs:
       - name: 上传 APK
         uses: actions/upload-artifact@v7
         with:
-          archive: false
+          # 多文件上传必须走默认打包（archive:false 仅支持单文件）。
           name: Android-TV-APK
           path: BPlus_TV_*.apk
 
